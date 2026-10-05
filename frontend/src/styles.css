@@ -1,0 +1,330 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+  color: #1c2530;
+}
+
+#app {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+#map {
+  flex: 1;
+  background: #dbe9f5; /* ocean */
+}
+
+.station-marker {
+  background: #1c4e80;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #1c4e80;
+}
+
+.waypoint-marker {
+  background: none;
+  border: none;
+}
+
+.wp-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.leaflet-tooltip.loc-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1c2530;
+}
+
+.color-picker {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #b8c0cc;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.swatch.selected {
+  box-shadow: 0 0 0 2px #1c2530;
+}
+
+/* Floating panel: sits over the map, sized to its content. New module
+   sections can be appended inside #panel-content without layout changes. */
+#panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  width: 248px;
+  max-width: calc(100% - 24px);
+  max-height: calc(100% - 24px);
+  border: 1px solid #d4d8dd;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(20, 30, 45, 0.22);
+  background: rgba(250, 251, 252, 0.97);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e5e9;
+  color: #33404d;
+}
+
+#panel-content {
+  padding: 12px 14px 14px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.panel-hint {
+  font-size: 13px;
+  color: #6a7683;
+  line-height: 1.4;
+}
+
+h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6a7683;
+  margin: 0 0 10px 0;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid #edeff2;
+}
+
+.info-label {
+  color: #6a7683;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #1c2530;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: #6a7683;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.text-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid #c9ced4;
+  border-radius: 3px;
+  margin-bottom: 10px;
+}
+
+.btn {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid #1c4e80;
+  background: #1c4e80;
+  color: #ffffff;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.btn:hover {
+  background: #163e66;
+}
+
+.btn-danger {
+  border-color: #a13a2b;
+  background: #ffffff;
+  color: #a13a2b;
+}
+
+.btn-danger:hover {
+  background: #fbeceb;
+}
+
+.full-view-btn {
+  font: 12px -apple-system, "Segoe UI", Arial, sans-serif;
+  padding: 6px 10px;
+  border: 1px solid #b8c0cc;
+  background: #ffffff;
+  color: #1c2530;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.full-view-btn:hover {
+  background: #f2f3f5;
+}
+
+.coord-readout {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #b8c0cc;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font: 11px/1.4 Consolas, Menlo, monospace;
+  color: #1c2530;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #1c4e80;
+  background: #e6edf5;
+  padding: 3px 6px;
+  border-radius: 3px;
+  margin-bottom: 10px;
+}
+
+#panel-actions { padding: 10px 14px 0; }
+#panel-actions .btn { margin-top: 0; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn-secondary { background: #ffffff; color: #1c4e80; }
+.btn-secondary:hover { background: #eef3f8; }
+.wp-list { max-height: 200px; overflow-y: auto; margin-bottom: 8px; }
+.wp-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.wp-row .wp-name { margin: 0; flex: 1; min-width: 0; }
+.wp-num { width: 18px; font-size: 12px; color: #6a7683; text-align: right; }
+.wp-tag { font-size: 9px; color: #1c4e80; min-width: 30px; }
+.wp-del { border: none; background: none; color: #a13a2b; font-size: 16px; cursor: pointer; padding: 0 4px; }
+.route-pin-wrap { background: none; border: none; }
+.route-pin { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+  font: 700 11px/1 Arial, sans-serif; color: #fff; background: #1c4e80; }
+.route-start { background: #2e9d57; }
+.route-destination { background: #d0362f; font-size: 13px; }
+
+.coord-form { border-top: 1px solid #e2e5e9; margin-top: 6px; padding-top: 2px; }
+.coord-inputs { display: flex; gap: 6px; }
+.coord-inputs .text-input { margin-bottom: 4px; min-width: 0; }
+.form-error { color: #a13a2b; font-size: 12px; min-height: 0; }
+.wp-selected .wp-name { border-color: #1c4e80; background: #eef3f8; }
+.route-selected { box-shadow: 0 0 0 3px #f2b134, 0 0 0 1px rgba(0,0,0,.4); }
+
+#route-list { padding: 4px 14px 0; max-height: 150px; overflow-y: auto; }
+.route-item { display: block; width: 100%; text-align: left; padding: 6px 8px; margin-bottom: 4px;
+  border: 1px solid #c9ced4; border-radius: 3px; background: #fff; cursor: pointer; }
+.route-item:hover { background: #f2f3f5; }
+.route-item.selected { border-color: #c4652b; background: #fdf3ec; }
+.route-item-name { display: block; font-size: 13px; font-weight: 600; color: #1c2530; }
+.route-item-sub { display: block; font-size: 11px; color: #6a7683; }
+.confirm-text { font-size: 14px; color: #1c2530; }
+.confirm-row { display: flex; gap: 8px; }
+.confirm-row .btn { margin-top: 0; }
+
+#panel-actions .btn + .btn { margin-top: 6px; }
+.entity-marker-wrap { background: none; border: none; }
+.entity-marker { display: block; width: 12px; height: 12px; border: 3px solid #fff; border-radius: 3px;
+  transform: rotate(45deg); background: #0f8b8d; box-shadow: 0 0 0 1px rgba(0,0,0,.5); }
+
+.entity-popup-row { display: flex; justify-content: space-between; gap: 14px; font-size: 12px; padding: 2px 0; }
+.entity-popup-key { color: #6a7683; }
+.entity-popup-val { font-weight: 600; color: #1c2530; text-align: right; }
+
+/* ---- Weather layer (small, secondary to operational markers) ---- */
+.wx-wrap { background: none; border: none; }
+.wx { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255,255,255,.85); border: 2px solid currentColor; opacity: .9; box-sizing: border-box; }
+.wx svg { display: block; }
+.wx-normal { color: #6b7f99; }
+.wx-caution { color: #d99a00; }
+.wx-severe { color: #c62828; }
+.wx-unknown { color: #9aa3ad; }
+.wx.wx-severe { border-width: 3px; }
+.wx-selected { box-shadow: 0 0 0 3px #f2b134; }
+.wx-ring-caution { outline: 3px solid #d99a00; outline-offset: 1px; }
+.wx-ring-severe { outline: 3px solid #c62828; outline-offset: 1px; }
+#wx-control { padding: 8px 14px 2px; font-size: 12px; }
+.wx-toggle { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #1c2530; cursor: pointer; }
+.wx-refresh { margin-left: auto; border: none; background: none; cursor: pointer; font-size: 15px; color: #1c4e80; }
+.wx-status { color: #1c2530; margin-top: 3px; }
+.wx-status.wx-bad { color: #a13a2b; font-weight: 600; }
+.wx-sub { color: #6a7683; font-size: 11px; margin-top: 2px; }
+.wx-legend { display: flex; gap: 10px; margin-top: 4px; color: #1c2530; }
+.wx-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: currentColor; margin-right: 4px; }
+.wx-chip { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 8px;
+  color: #fff; background: currentColor; }
+.wx-chip.wx-normal { background: #6b7f99; } .wx-chip.wx-caution { background: #d99a00; }
+.wx-chip.wx-severe { background: #c62828; } .wx-chip.wx-unknown { background: #9aa3ad; }
+.wx-reason { font-size: 11px; color: #a13a2b; margin: 2px 0; }
+.wx-route { border-top: 1px solid #e2e5e9; margin-top: 6px; padding-top: 2px; }
+.wx-route-row { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 3px; }
+.wx-route-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wx-route-val { color: #6a7683; min-width: 52px; text-align: right; }
+
+/* ---- Severity areas (4-level scale; see LEVELS in lib/weather.js) ---- */
+.wx.wx-arrow { color: #34495e; }
+.wx-swatch { display: inline-block; width: 12px; height: 9px; border: 1px solid #c9ced4; border-radius: 2px; margin-right: 4px; }
+.wx-ring-moderate { outline: 3px solid #f2751a; outline-offset: 1px; }
+.wx-ring-high { outline: 3px solid #e0401a; outline-offset: 1px; }
+.wx-ring-extreme { outline: 3px solid #b3121a; outline-offset: 1px; }
+.wx-legend { flex-wrap: wrap; gap: 3px 10px; }
+.wx-legend span { white-space: nowrap; }
+
+.btn-primary-lg { padding: 12px 10px; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+
+/* ---- Expedition planning page (separate view; plain forms/tables, same palette) ---- */
+.plan-page { position: fixed; inset: 0; z-index: 2000; overflow-y: auto; background: #fafbfc; color: #1c2530; padding: 20px 32px 40px; font-size: 14px; }
+.plan-page > * { max-width: 980px; margin-left: auto; margin-right: auto; }
+.plan-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1c4e80; padding-bottom: 8px; }
+.plan-head h1 { margin: 0; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; }
+.plan-back { width: auto; margin: 0; padding: 7px 16px; }
+.plan-route { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px auto; padding: 10px 0; border-bottom: 1px solid #d4d8dd; }
+.plan-route span { display: block; font-size: 11px; text-transform: uppercase; color: #6a7683; }
+.plan-route small { display: block; font-size: 11px; color: #6a7683; }
+.plan-section { margin-top: 22px; }
+.plan-section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid #d4d8dd; }
+.plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
+.plan-grid label, .plan-two .field-label { font-size: 12px; color: #6a7683; }
+.plan-grid .text-input { margin-top: 3px; }
+.plan-duration { margin: 8px 0 0; }
+.plan-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.plan-table th, .plan-table td { border: 1px solid #d4d8dd; padding: 5px 8px; text-align: left; vertical-align: middle; background: #fff; }
+.plan-table thead th { background: #eef1f4; font-size: 12px; text-transform: uppercase; color: #46515e; }
+.plan-table .text-input { margin: 0; }
+.plan-summary th { width: 180px; background: #eef1f4; font-size: 12px; text-transform: uppercase; color: #46515e; }
+.plan-note { font-size: 12px; color: #6a7683; margin: 4px 0 8px; }
+.plan-dim { color: #9aa3ad; }
+.plan-add { width: auto; padding: 6px 14px; }
+.plan-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.plan-check { display: block; margin: 4px 0; }
+.plan-check small { color: #6a7683; }
+.plan-errors { color: #a13a2b; margin: 10px 0; padding-left: 20px; }
+.plan-saved { color: #1f7a45; font-weight: 600; margin: 10px 0; }
+.plan-actions { display: flex; gap: 10px; margin-top: 12px; }
+.plan-actions .btn { width: auto; margin: 0; padding: 9px 22px; }
+
+/* ---- Simulation page: reuses plan-* styles; select needs the same input look ---- */
+.plan-page select.text-input { width: 100%; }
