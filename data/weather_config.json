@@ -1,0 +1,7 @@
+{
+  "_note": "OPERATIONAL ASSUMPTIONS for demonstration only - NOT official Antarctic thresholds. Edit to match your own operating limits; changes apply on the next request.",
+  "window_hours": 24,
+  "wind_kmh": { "caution": 40, "severe": 70 },
+  "gust_kmh": { "caution": 60, "severe": 90 },
+  "temperature_c_below": { "caution": -30, "severe": -40 }
+}

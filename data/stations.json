@@ -1,0 +1,18 @@
+[
+  {
+    "id": "station-maitri",
+    "name": "Maitri",
+    "latitude": -70.75,
+    "longitude": 11.75,
+    "type": "station",
+    "editable": false
+  },
+  {
+    "id": "station-bharati",
+    "name": "Bharati",
+    "latitude": -69.40,
+    "longitude": 76.19,
+    "type": "station",
+    "editable": false
+  }
+]
