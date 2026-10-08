@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Asset Tracking Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 1250px; margin: 0 auto; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { background: #1e293b; color: #94a3b8; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .tab-btn.active { background: #2563eb; color: white; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+        input, select, button { padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+        button { background: #2563eb; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .btn-delete { background: #ef4444; }
+        .btn-delete:hover { background: #dc2626; }
+        .btn-excel { background: #10b981; margin-left: auto; }
+        .btn-excel:hover { background: #059669; }
+        .btn-action { padding: 6px 12px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-AVAILABLE { background: #059669; }
+        .badge-IN_TRANSIT { background: #d97706; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Polar Expedition Asset Dashboard</h2>
+
+    <!-- NAVIGATION TABS -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" id="btn-inward" onclick="switchTab('inward')">Inward Scan / Inventory</button>
+        <button class="tab-btn" id="btn-stock" onclick="switchTab('stock')">Stock Verification</button>
+        <button class="tab-btn" id="btn-consumption" onclick="switchTab('consumption')">Consumption Stats (30 Days)</button>
+        <button class="tab-btn" id="btn-transfers" onclick="switchTab('transfers')">Mobilization & Transfers</button>
+        <button class="btn-excel" onclick="window.location.href='/api/reports/export-excel'">📊 Export Excel Report</button>
+    </div>
+
+    <!-- TAB 1: INWARD SCAN & INVENTORY CRUD -->
+    <div id="tab-inward" class="tab-content">
+        <div class="card">
+            <h3 id="inward-form-title">Scan / Add Inward Asset</h3>
+            <form onsubmit="handleInwardScan(event)" class="form-grid">
+                <input type="text" id="ast_id" placeholder="Asset ID (AST-999)" required>
+                <input type="text" id="ast_barcode" placeholder="Barcode ID" required>
+                <input type="text" id="ast_box" placeholder="Packet ID (45ISEA-BOX-1)" required>
+                <input type="text" id="ast_name" placeholder="Item Name" required>
+                <select id="ast_cat" required>
+                    <option value="Medical Equipment">Medical Equipment</option>
+                    <option value="Ski Equipment">Ski Equipment</option>
+                    <option value="Expedition Tents">Expedition Tents</option>
+                    <option value="Cooking Hardware">Cooking Hardware</option>
+                </select>
+                <select id="ast_loc" required><option value="">Loading Locations...</option></select>
+                <button type="submit" id="inward-submit-btn">Execute Inward Insert</button>
+                <button type="button" id="inward-cancel-btn" class="btn-delete" style="display:none;" onclick="cancelEdit()">Cancel Edit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB 2: INITIATE TRANSFER FORM (Mobilization Tab) -->
+    <div id="transfer-form-card" class="card" style="display:none;">
+        <h3>🚚 Initiate Asset Mobilization Transfer</h3>
+        <form onsubmit="handleTransferSubmit(event)" class="form-grid">
+            <input type="text" id="tr_id" placeholder="Transfer ID (TR-101)" required>
+            <select id="tr_asset" required><option value="">Select Source First...</option></select>
+            <select id="tr_source" required onchange="loadTransferAssets()"><option value="">Source Station...</option></select>
+            <select id="tr_dest" required><option value="">Destination Station...</option></select>
+            <button type="submit">Dispatch Transfer</button>
+        </form>
+    </div>
+
+    <!-- MAIN REPORTS & DATA TABLE -->
+    <div id="tab-reports" class="tab-content card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3 id="report-title">Report View</h3>
+            <!-- DYNAMIC LOCATION FILTER -->
+            <select id="filter-location" onchange="applyLocationFilter()" style="display:none;">
+                <option value="">All Locations</option>
+            </select>
+        </div>
+        <table id="report-table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'inward';
+    let globalLocations = [];
+    let globalAssets = [];
+    let editingAssetId = null;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await loadLocations();
+        switchTab('inward');
+    });
+
+    async function loadLocations() {
+        const res = await fetch('/api/locations');
+        globalLocations = await res.json();
+        
+        const locOptions = '<option value="">Select Location...</option>' + 
+            globalLocations.map(l => `<option value="${l.location_id}">${l.name}</option>`).join('');
+
+        document.getElementById('ast_loc').innerHTML = locOptions;
+        document.getElementById('filter-location').innerHTML = '<option value="">All Locations</option>' + 
+            globalLocations.map(l => `<option value="${l.location_id}">${l.name}</option>`).join('');
+        document.getElementById('tr_source').innerHTML = locOptions;
+        document.getElementById('tr_dest').innerHTML = locOptions;
+    }
+
+    function escapeHtml(v) {
+        return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    async function readError(res) {
+        try { const err = await res.json(); return err.detail || res.statusText; }
+        catch (_) { return res.statusText || 'Request failed'; }
+    }
+
+    async function handleInwardScan(e) {
+        e.preventDefault();
+        const payload = {
+            asset_id: document.getElementById('ast_id').value,
+            barcode_id: document.getElementById('ast_barcode').value,
+            content_id: document.getElementById('ast_box').value,
+            name: document.getElementById('ast_name').value,
+            category: document.getElementById('ast_cat').value,
+            current_location_id: document.getElementById('ast_loc').value
+        };
+
+        try {
+            let res;
+            if (editingAssetId) {
+                // UPDATE existing asset (location is changed via the "Move to..." dropdown)
+                res = await fetch(`/api/assets/${encodeURIComponent(editingAssetId)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        barcode_id: payload.barcode_id, content_id: payload.content_id,
+                        name: payload.name, category: payload.category
+                    })
+                });
+            } else {
+                // CREATE new asset (DB trigger writes it into the assets table)
+                res = await fetch('/api/assets/scan-inward', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+
+            if (res.ok) {
+                alert(editingAssetId ? "Asset updated successfully!" : "Asset scanned and added successfully!");
+                cancelEdit();
+                switchTab('inward');
+            } else {
+                alert(`Error: ${await readError(res)}`);
+            }
+        } catch (err) {
+            alert(`Error: could not reach the server (${err.message})`);
+        }
+    }
+
+    function startEdit(assetId) {
+        const a = globalAssets.find(x => x.asset_id === assetId);
+        if (!a) return;
+        editingAssetId = assetId;
+        document.getElementById('ast_id').value = a.asset_id;
+        document.getElementById('ast_id').readOnly = true;
+        document.getElementById('ast_barcode').value = a.barcode_id || '';
+        document.getElementById('ast_box').value = a.content_id || '';
+        document.getElementById('ast_name').value = a.asset_name;
+        document.getElementById('ast_cat').value = a.category;
+        document.getElementById('ast_loc').value = a.current_location_id || '';
+        document.getElementById('ast_loc').disabled = true;
+        document.getElementById('inward-form-title').innerText = `Edit Asset ${a.asset_id}`;
+        document.getElementById('inward-submit-btn').innerText = 'Save Changes';
+        document.getElementById('inward-cancel-btn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        editingAssetId = null;
+        const form = document.getElementById('ast_id').closest('form');
+        form.reset();
+        document.getElementById('ast_id').readOnly = false;
+        document.getElementById('ast_loc').disabled = false;
+        document.getElementById('inward-form-title').innerText = 'Scan / Add Inward Asset';
+        document.getElementById('inward-submit-btn').innerText = 'Execute Inward Insert';
+        document.getElementById('inward-cancel-btn').style.display = 'none';
+    }
+
+    async function updateAssetLocation(assetId, newLocId) {
+        if (!newLocId) return;
+        const res = await fetch(`/api/assets/${assetId}/location`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_location_id: newLocId })
+        });
+        if (res.ok) {
+            alert(`Asset ${assetId} location updated!`);
+        } else {
+            alert(`Error: ${await readError(res)}`);
+        }
+        switchTab('inward');
+    }
+
+    async function handleTransferSubmit(e) {
+        e.preventDefault();
+        const payload = {
+            transfer_id: document.getElementById('tr_id').value,
+            asset_id: document.getElementById('tr_asset').value,
+            source_location_id: document.getElementById('tr_source').value,
+            destination_location_id: document.getElementById('tr_dest').value
+        };
+
+        const res = await fetch('/api/transfers/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert("Transfer request initiated!");
+            e.target.reset();
+            switchTab('transfers');
+        } else {
+            alert(`Error: ${await readError(res)}`);
+            loadTransferAssets();
+        }
+    }
+
+    // Mobilization dropdown: only real, AVAILABLE assets located at the chosen source station
+    async function loadTransferAssets() {
+        const assetSel = document.getElementById('tr_asset');
+        const source = document.getElementById('tr_source').value;
+        if (!source) {
+            assetSel.innerHTML = '<option value="">Select Source First...</option>';
+            return;
+        }
+        const res = await fetch(`/api/assets/available?location_id=${encodeURIComponent(source)}`);
+        const list = await res.json();
+        assetSel.innerHTML = list.length === 0
+            ? '<option value="">No available assets at this station</option>'
+            : '<option value="">Select Asset...</option>' +
+              list.map(a => `<option value="${escapeHtml(a.asset_id)}">${escapeHtml(a.asset_id)} - ${escapeHtml(a.asset_name)}</option>`).join('');
+    }
+
+    function applyLocationFilter() {
+        switchTab(currentTab);
+    }
+
+    async function switchTab(tab) {
+        currentTab = tab;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        if(document.getElementById(`btn-${tab}`)) {
+            document.getElementById(`btn-${tab}`).classList.add('active');
+        }
+
+        const body = document.getElementById('table-body');
+        const head = document.getElementById('table-head');
+        const filterLoc = document.getElementById('filter-location');
+        const transferCard = document.getElementById('transfer-form-card');
+        const selectedLoc = filterLoc.value;
+
+        transferCard.style.display = (tab === 'transfers') ? 'block' : 'none';
+        if (tab === 'transfers') loadTransferAssets();
+
+        if (tab === 'inward') {
+            filterLoc.style.display = 'inline-block';
+            document.getElementById('report-title').innerText = "Live Registered Assets";
+            head.innerHTML = `<tr><th>Asset ID</th><th>Box ID</th><th>Name</th><th>Category</th><th>Current Location</th><th>Status</th><th>Update Location</th><th>Actions</th></tr>`;
+            
+            const url = selectedLoc ? `/api/reports/issued-assets?location_id=${selectedLoc}` : '/api/reports/issued-assets';
+            const res = await fetch(url);
+            globalAssets = await res.json();
+            
+            body.innerHTML = globalAssets.length === 0 ? '<tr><td colspan="8">No assets found.</td></tr>' : globalAssets.map(i => {
+                const locSelect = `<select data-id="${escapeHtml(i.asset_id)}" onchange="updateAssetLocation(this.dataset.id, this.value)" style="padding:4px;" ${i.status === 'IN_TRANSIT' ? 'disabled' : ''}>
+                    <option value="">Move to...</option>
+                    ${globalLocations.map(l => `<option value="${l.location_id}" ${l.location_id === i.current_location_id ? 'disabled' : ''}>${l.name}</option>`).join('')}
+                </select>`;
+
+                return `
+                    <tr>
+                        <td><b>${escapeHtml(i.asset_id)}</b></td>
+                        <td><code>${escapeHtml(i.content_id)}</code></td>
+                        <td>${escapeHtml(i.asset_name)}</td>
+                        <td>${escapeHtml(i.category) || 'N/A'}</td>
+                        <td><b>${escapeHtml(i.location_name) || 'Unassigned'}</b></td>
+                        <td><span class="badge badge-${escapeHtml(i.status)}">${escapeHtml(i.status)}</span></td>
+                        <td>${locSelect}</td>
+                        <td>
+                            <button class="btn-action" data-id="${escapeHtml(i.asset_id)}" onclick="startEdit(this.dataset.id)">Edit</button>
+                            <button class="btn-delete btn-action" data-id="${escapeHtml(i.asset_id)}" onclick="deleteAsset(this.dataset.id)">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+        } else if (tab === 'stock') {
+            filterLoc.style.display = 'inline-block';
+            document.getElementById('report-title').innerText = "Consumable Stock Verification";
+            head.innerHTML = `<tr><th>Station Location</th><th>Item Name</th><th>Quantity on Hand</th><th>Unit</th></tr>`;
+            
+            const url = selectedLoc ? `/api/reports/stock?location_id=${selectedLoc}` : '/api/reports/stock';
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            body.innerHTML = data.length === 0 ? '<tr><td colspan="4">No stock records found.</td></tr>' : data.map(s => `
+                <tr>
+                    <td>${s.location_name}</td>
+                    <td><b>${s.item_name}</b></td>
+                    <td>${s.quantity_on_hand}</td>
+                    <td>${s.unit_of_measure}</td>
+                </tr>
+            `).join('');
+
+        } else if (tab === 'consumption') {
+            filterLoc.style.display = 'none';
+            document.getElementById('report-title').innerText = "Consumption Statistics Log (Last 30 Days)";
+            head.innerHTML = `<tr><th>Item Name</th><th>Logged Team</th><th>Total Consumed</th><th>Timestamp</th></tr>`;
+            
+            const res = await fetch('/api/reports/consumption');
+            const data = await res.json();
+            
+            body.innerHTML = data.length === 0 ? '<tr><td colspan="4">No consumption logs found in the last 30 days.</td></tr>' : data.map(c => `
+                <tr>
+                    <td><b>${c.item_name}</b></td>
+                    <td>${c.logged_by_team}</td>
+                    <td>${c.total_consumed}</td>
+                    <td>${c.timestamp}</td>
+                </tr>
+            `).join('');
+
+        } else if (tab === 'transfers') {
+            filterLoc.style.display = 'none';
+            document.getElementById('report-title').innerText = "Mobilization & Transfer History";
+            head.innerHTML = `<tr><th>Transfer ID</th><th>Asset Name</th><th>Source</th><th>Destination</th><th>Status</th><th>Actions</th></tr>`;
+            
+            const res = await fetch('/api/transfers');
+            const data = await res.json();
+            
+            body.innerHTML = data.length === 0 ? '<tr><td colspan="6">No transfers recorded.</td></tr>' : data.map(t => `
+                <tr>
+                    <td><b>${t.transfer_id}</b></td>
+                    <td>${t.asset_name}</td>
+                    <td>${t.source_station}</td>
+                    <td>${t.destination_station}</td>
+                    <td><span class="badge badge-${t.status}">${t.status}</span></td>
+                    <td>
+                        ${t.status === 'IN_TRANSIT' ? `
+                            <button class="btn-action" onclick="confirmTransfer('${t.transfer_id}', 'CONFIRMED')">Confirm Receipt</button>
+                            <button class="btn-delete btn-action" onclick="confirmTransfer('${t.transfer_id}', 'REJECTED')">Reject</button>
+                        ` : 'Completed'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    async function deleteAsset(id) {
+        if (confirm(`Are you sure you want to delete asset ${id}?`)) {
+            const res = await fetch(`/api/assets/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!res.ok) alert(`Error: ${await readError(res)}`);
+            if (editingAssetId === id) cancelEdit();
+            switchTab('inward');
+        }
+    }
+
+    async function confirmTransfer(transferId, status) {
+        const res = await fetch(`/api/transfers/${transferId}/confirm`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status })
+        });
+        if (!res.ok) alert(`Error: ${await readError(res)}`);
+        switchTab('transfers');
+    }
+</script>
+</body>
+</html>
